@@ -1,5 +1,7 @@
 FROM buildpack-deps:bionic
 
+ARG http_proxy
+ARG https_proxy
 RUN apt-get update && apt-get install -yqq libluajit-5.1-dev libssl-dev luajit
 
 WORKDIR /wrk

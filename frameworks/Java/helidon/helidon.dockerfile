@@ -2,11 +2,11 @@
 FROM maven:3.6.1-jdk-11-slim as maven
 WORKDIR /helidon
 ADD reactive/pom.xml .
-RUN mvn package -q
+RUN mvn -Dhttp.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttp.proxyPort=80 -Dhttps.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttps.proxyPort=80 package -q
 
 # maven build
 ADD reactive/src src
-RUN mvn package -q
+RUN mvn -Dhttp.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttp.proxyPort=80 -Dhttps.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttps.proxyPort=80 package -q
 
 # 2nd stage
 FROM openjdk:15-slim

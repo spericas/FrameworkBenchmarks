@@ -23,12 +23,12 @@ WORKDIR /helidonmp
 # Incremental docker builds will always resume after that, unless you update
 # the pom
 ADD microprofile/pom.xml .
-RUN mvn package -q
+RUN mvn -Dhttp.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttp.proxyPort=80 -Dhttps.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttps.proxyPort=80 package -q
 
 # Do the Maven build!
 # Incremental docker builds will resume here when you change sources
 ADD microprofile/src src
-RUN mvn package -q
+RUN mvn -Dhttp.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttp.proxyPort=80 -Dhttps.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttps.proxyPort=80 package -q
 
 # 2nd stage, build the runtime image
 FROM openjdk:15-slim
