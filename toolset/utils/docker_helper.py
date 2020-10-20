@@ -33,6 +33,12 @@ class DockerHelper:
         Builds docker containers using docker-py low-level api
         '''
 
+        # Add proxy configuration
+	buildargs.update({
+              'http_proxy': 'http://www-proxy-hqdc.us.oracle.com:80',
+              'https_proxy': 'http://www-proxy-hqdc.us.oracle.com:80'
+            });
+
         self.benchmarker.time_logger.mark_build_start()
         with open(build_log_file, 'w') as build_log:
             try:

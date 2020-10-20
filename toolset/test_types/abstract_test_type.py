@@ -76,10 +76,10 @@ class AbstractTestType:
         Downloads a URL and returns the HTTP response headers
         and body content as a tuple
         '''
-        log("Accessing URL {!s}: ".format(url), color=Fore.CYAN)
+        log("Accessing URL no proxies {!s}: ".format(url), color=Fore.CYAN)
 
         headers = {'Accept': self.accept_header}
-        r = requests.get(url, timeout=15, headers=headers)
+        r = requests.get(url, timeout=15, headers=headers, proxies={ "http": None, "https": None })
 
         self.headers = r.headers
         self.body = r.content

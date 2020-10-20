@@ -2,7 +2,7 @@ FROM maven:3.6.1-jdk-11-slim as maven
 WORKDIR /helidon
 COPY src src
 COPY pom.xml pom.xml
-RUN mvn package -q
+RUN mvn -Dhttp.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttp.proxyPort=80 -Dhttps.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttps.proxyPort=80 package -q
 
 FROM openjdk:11.0.3-jdk-slim
 WORKDIR /helidon
