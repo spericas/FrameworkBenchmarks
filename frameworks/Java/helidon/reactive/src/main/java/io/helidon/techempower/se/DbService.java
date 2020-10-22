@@ -4,15 +4,16 @@ import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonBuilderFactory;
 import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicReference;
 
 import io.helidon.common.reactive.Single;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbRow;
-import io.helidon.dbclient.DbColumn;
+import io.helidon.dbclient.DbStatementGet;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
@@ -25,6 +26,8 @@ class DbService implements Service {
 
     private final DbClient dbClient;
     private final JsonBuilderFactory jsonBuilderFactory;
+
+    private final AtomicReference<DbStatementGet> statementGet = new AtomicReference<>();
 
     DbService(DbClient dbClient) {
         this.dbClient = dbClient;
@@ -47,18 +50,23 @@ class DbService implements Service {
         int count = parseQueryCount(req.queryParams().first("queries").orElse("1"));
         JsonArrayBuilder builder = jsonBuilderFactory.createArrayBuilder();
 
-        /*
-        try {
-            for (int i = 0; i < count; i++) {
-                Single<JsonObject> single = nextWorld();
-                JsonObject obj = single.get();
-                builder.add(obj);
+        dbClient.execute(it -> {
+            statementGet.compareAndSet(null, it.createNamedGet("get-world"));
+            try {
+                for (int i = 0; i < count; i++) {
+                    builder.add(statementGet.get()
+                            .params(randomWorldNumber())
+                            .execute()
+                            .map(Optional::get)
+                            .map(row -> row.as(JsonObject.class)).get());
+                }
+                res.send(builder.build());
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
             }
-            res.send(builder.build());
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-         */
+            return null;
+        });
 
         /*
         Single<JsonObject> last = nextWorld();
@@ -77,6 +85,7 @@ class DbService implements Service {
         }).exceptionally(res::send);
         */
 
+        /*
         Single<DbRow> last = nextWorldDbRow();
 
         // one less, as we already selected one
@@ -97,6 +106,7 @@ class DbService implements Service {
             builder.add(obj.build());
             res.send(builder.build());
         }).exceptionally(res::send);
+        */
     }
 
     private void updates(ServerRequest req, ServerResponse res) {
@@ -126,6 +136,7 @@ class DbService implements Service {
                 .map(Optional::get)
                 .map(it -> it.as(JsonObject.class));
     }
+
 
     private Single<DbRow> nextWorldDbRow() {
         return dbClient.execute(it -> it.namedGet("get-world", randomWorldNumber()))
