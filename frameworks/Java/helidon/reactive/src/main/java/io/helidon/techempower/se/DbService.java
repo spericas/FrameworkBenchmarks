@@ -1,18 +1,18 @@
 package io.helidon.techempower.se;
 
-import java.net.ConnectException;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ThreadLocalRandom;
-
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonBuilderFactory;
 import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 import io.helidon.common.reactive.Single;
 import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbRow;
+import io.helidon.dbclient.DbColumn;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
@@ -47,6 +47,7 @@ class DbService implements Service {
         int count = parseQueryCount(req.queryParams().first("queries").orElse("1"));
         JsonArrayBuilder builder = jsonBuilderFactory.createArrayBuilder();
 
+        /*
         try {
             for (int i = 0; i < count; i++) {
                 Single<JsonObject> single = nextWorld();
@@ -57,6 +58,7 @@ class DbService implements Service {
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
+         */
 
         /*
         Single<JsonObject> last = nextWorld();
@@ -74,6 +76,27 @@ class DbService implements Service {
             res.send(builder.build());
         }).exceptionally(res::send);
         */
+
+        Single<DbRow> last = nextWorldDbRow();
+
+        // one less, as we already selected one
+        for (int i = 1; i < count; i++) {
+            last = last.flatMapSingle(it -> {
+                JsonObjectBuilder obj = jsonBuilderFactory.createObjectBuilder();
+                obj.add("id", it.column("id").as(Integer.class));
+                obj.add("randomNumber", it.column("randomnumber").as(Integer.class));
+                builder.add(obj.build());
+                return nextWorldDbRow();
+            });
+        }
+
+        last.thenAccept(it -> {
+            JsonObjectBuilder obj = jsonBuilderFactory.createObjectBuilder();
+            obj.add("id", it.column("id").as(Integer.class));
+            obj.add("randomNumber", it.column("randomnumber").as(Integer.class));
+            builder.add(obj.build());
+            res.send(builder.build());
+        }).exceptionally(res::send);
     }
 
     private void updates(ServerRequest req, ServerResponse res) {
@@ -102,6 +125,11 @@ class DbService implements Service {
         return dbClient.execute(it -> it.namedGet("get-world", randomWorldNumber()))
                 .map(Optional::get)
                 .map(it -> it.as(JsonObject.class));
+    }
+
+    private Single<DbRow> nextWorldDbRow() {
+        return dbClient.execute(it -> it.namedGet("get-world", randomWorldNumber()))
+                .map(Optional::get);
     }
 
     private Single<JsonObject> updateWorld() {
