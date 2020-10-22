@@ -1,7 +1,9 @@
 package io.helidon.techempower.se;
 
+import java.net.ConnectException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.json.Json;
@@ -45,6 +47,18 @@ class DbService implements Service {
         int count = parseQueryCount(req.queryParams().first("queries").orElse("1"));
         JsonArrayBuilder builder = jsonBuilderFactory.createArrayBuilder();
 
+        try {
+            for (int i = 0; i < count; i++) {
+                Single<JsonObject> single = nextWorld();
+                JsonObject obj = single.get();
+                builder.add(obj);
+            }
+            res.send(builder.build());
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        /*
         Single<JsonObject> last = nextWorld();
 
         // one less, as we already selected one
@@ -59,6 +73,7 @@ class DbService implements Service {
             builder.add(it);
             res.send(builder.build());
         }).exceptionally(res::send);
+        */
     }
 
     private void updates(ServerRequest req, ServerResponse res) {
