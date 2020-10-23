@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicReference;
 
 import io.helidon.common.reactive.Single;
 import io.helidon.dbclient.DbClient;
@@ -26,8 +25,6 @@ class DbService implements Service {
 
     private final DbClient dbClient;
     private final JsonBuilderFactory jsonBuilderFactory;
-
-    private final AtomicReference<DbStatementGet> statementGet = new AtomicReference<>();
 
     DbService(DbClient dbClient) {
         this.dbClient = dbClient;
@@ -51,18 +48,17 @@ class DbService implements Service {
         JsonArrayBuilder builder = jsonBuilderFactory.createArrayBuilder();
 
         dbClient.execute(it -> {
-            statementGet.compareAndSet(null, it.createNamedGet("get-world"));
+            DbStatementGet statementGet = it.createNamedGet("get-world");
             try {
                 for (int i = 0; i < count; i++) {
-                    builder.add(statementGet.get()
-                            .params(randomWorldNumber())
+                    builder.add(statementGet.params(randomWorldNumber())
                             .execute()
                             .map(Optional::get)
                             .map(row -> row.as(JsonObject.class)).get());
                 }
                 res.send(builder.build());
             } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
+                res.status(500);
                 throw new RuntimeException(e);
             }
             return null;
