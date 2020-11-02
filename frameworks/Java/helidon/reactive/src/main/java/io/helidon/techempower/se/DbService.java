@@ -6,13 +6,10 @@ import javax.json.JsonBuilderFactory;
 import javax.json.JsonObject;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 
 import io.helidon.common.reactive.Single;
 import io.helidon.dbclient.DbClient;
-import io.helidon.dbclient.DbRow;
-import io.helidon.dbclient.DbStatementGet;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
@@ -25,10 +22,21 @@ class DbService implements Service {
 
     private final DbClient dbClient;
     private final JsonBuilderFactory jsonBuilderFactory;
+    private final DbRepository dbRepository;
+    private final boolean useDbClient;
 
-    DbService(DbClient dbClient) {
+    /**
+     * Create a {@code DbService}. If {@code dbRepository} is null then {@code dbClient}
+     * will be used.
+     *
+     * @param dbClient Instance of {@code DbClient}, may be null
+     * @param dbRepository Instance of {@code dbRepository}, may be null
+     */
+    DbService(DbClient dbClient, DbRepository dbRepository) {
         this.dbClient = dbClient;
+        this.dbRepository = dbRepository;
         this.jsonBuilderFactory = Json.createBuilderFactory(Map.of());
+        this.useDbClient = (dbRepository == null);
     }
 
     @Override
@@ -39,39 +47,21 @@ class DbService implements Service {
     }
 
     private void db(ServerRequest req, ServerResponse res) {
-        nextWorld().thenAccept(res::send)
-                .exceptionally(res::send);
+        queryDb().thenAccept(res::send).exceptionally(res::send);
     }
+
 
     private void queries(ServerRequest req, ServerResponse res) {
         int count = parseQueryCount(req.queryParams().first("queries").orElse("1"));
         JsonArrayBuilder builder = jsonBuilderFactory.createArrayBuilder();
 
-        dbClient.execute(it -> {
-            DbStatementGet statementGet = it.createNamedGet("get-world");
-            try {
-                for (int i = 0; i < count; i++) {
-                    builder.add(statementGet.params(randomWorldNumber())
-                            .execute()
-                            .map(Optional::get)
-                            .map(row -> row.as(JsonObject.class)).get());
-                }
-                res.send(builder.build());
-            } catch (InterruptedException | ExecutionException e) {
-                res.status(500);
-                throw new RuntimeException(e);
-            }
-            return null;
-        });
-
-        /*
-        Single<JsonObject> last = nextWorld();
+        Single<JsonObject> last = queryDb();
 
         // one less, as we already selected one
         for (int i = 1; i < count; i++) {
             last = last.flatMapSingle(it -> {
                 builder.add(it);
-                return nextWorld();
+                return queryDb();
             });
         }
 
@@ -79,45 +69,19 @@ class DbService implements Service {
             builder.add(it);
             res.send(builder.build());
         }).exceptionally(res::send);
-        */
-
-        /*
-        Single<DbRow> last = nextWorldDbRow();
-
-        // one less, as we already selected one
-        for (int i = 1; i < count; i++) {
-            last = last.flatMapSingle(it -> {
-                JsonObjectBuilder obj = jsonBuilderFactory.createObjectBuilder();
-                obj.add("id", it.column("id").as(Integer.class));
-                obj.add("randomNumber", it.column("randomnumber").as(Integer.class));
-                builder.add(obj.build());
-                return nextWorldDbRow();
-            });
-        }
-
-        last.thenAccept(it -> {
-            JsonObjectBuilder obj = jsonBuilderFactory.createObjectBuilder();
-            obj.add("id", it.column("id").as(Integer.class));
-            obj.add("randomNumber", it.column("randomnumber").as(Integer.class));
-            builder.add(obj.build());
-            res.send(builder.build());
-        }).exceptionally(res::send);
-        */
     }
 
     private void updates(ServerRequest req, ServerResponse res) {
         int count = parseQueryCount(req.queryParams().first("updates").orElse("1"));
         JsonArrayBuilder builder = jsonBuilderFactory.createArrayBuilder();
 
-        // the following section is convoluted, as we need to execute a big number of queries and updates, but due to
-        // unknown limit, we execute them sequentially rather than in parallel
-        Single<JsonObject> last = updateWorld();
+        Single<JsonObject> last = updateDb();
 
         // one less, as we already selected one
         for (int i = 1; i < count; i++) {
             last = last.flatMapSingle(it -> {
                 builder.add(it);
-                return updateWorld();
+                return updateDb();
             });
         }
 
@@ -127,20 +91,26 @@ class DbService implements Service {
         }).exceptionally(res::send);
     }
 
-    private Single<JsonObject> nextWorld() {
+    private Single<JsonObject> queryDb() {
+        return useDbClient ? queryDbClient() : queryDbRepository();
+    }
+
+    private Single<JsonObject> queryDbClient() {
         return dbClient.execute(it -> it.namedGet("get-world", randomWorldNumber()))
                 .map(Optional::get)
                 .map(it -> it.as(JsonObject.class));
     }
 
-
-    private Single<DbRow> nextWorldDbRow() {
-        return dbClient.execute(it -> it.namedGet("get-world", randomWorldNumber()))
-                .map(Optional::get);
+    private Single<JsonObject> queryDbRepository() {
+        return dbRepository.getWorld(randomWorldNumber()).map(World::toJson);
     }
 
-    private Single<JsonObject> updateWorld() {
-        return nextWorld().flatMapSingle(it -> {
+    private Single<JsonObject> updateDb() {
+        return useDbClient ? updateDbClient() : updateDbRepository();
+    }
+
+    private Single<JsonObject> updateDbClient() {
+        return queryDbClient().flatMapSingle(it -> {
             int id = it.getInt("id");
             int random = randomWorldNumber();
             return dbClient.execute(exec -> exec.namedUpdate("update-world", id, random))
@@ -149,6 +119,18 @@ class DbService implements Service {
                             .add("randomNumber", random)
                             .build());
 
+        });
+    }
+
+    private Single<JsonObject> updateDbRepository() {
+        return queryDbRepository().flatMapSingle(it -> {
+            int id = it.getInt("id");
+            int random = randomWorldNumber();
+            return dbRepository.updateWorld(new World(id, random))
+                    .map(dbResult -> jsonBuilderFactory.createObjectBuilder()
+                            .add("id", id)
+                            .add("randomNumber", random)
+                            .build());
         });
     }
 
