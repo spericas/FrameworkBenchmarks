@@ -4,9 +4,23 @@
 server:
   port: 8080
   host: 0.0.0.0
+  worker-count: 8
+
+#
+# JDBC configuration
+#
+# Note: Takes precedence over dbclient section. Comment out to use dbclient below.
+#
+dataSource:
+  jdbcUrl: "jdbc:postgresql://tfb-database:5432/hello_world"
+  username: benchmarkdbuser
+  password: benchmarkdbpass
+  maximumPoolSize: 512
 
 #
 # DB Client configuration
+#
+# Note: Comment out the dataSource section to use DbClient
 #
 dbclient:
   source: "jdbc"
@@ -20,8 +34,7 @@ dbclient:
     update-world: "UPDATE World SET randomNumber = ? WHERE id = ?"
     all-fortunes: "SELECT id, message FROM Fortune"
   executor-service:
-    # Let's make sure we have enough parallelism for database (JDBC)
-    core-pool-size: 100
-    max-pool-size: 100
+    core-pool-size: 32
+    max-pool-size: 32
     thread-name-prefix: "dbc-"
     should-prestart: true

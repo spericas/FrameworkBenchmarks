@@ -16,18 +16,21 @@
 
 package io.helidon.techempower.se;
 
+import javax.sql.DataSource;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+import com.github.mustachejava.DefaultMustacheFactory;
+import com.github.mustachejava.Mustache;
+import com.github.mustachejava.MustacheFactory;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import io.helidon.common.LogConfig;
 import io.helidon.config.Config;
 import io.helidon.dbclient.DbClient;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.WebServer;
-
-import com.github.mustachejava.DefaultMustacheFactory;
-import com.github.mustachejava.Mustache;
-import com.github.mustachejava.MustacheFactory;
 
 /**
  * TechEmpower benchmark test.
@@ -61,17 +64,29 @@ public final class Main {
      * @return the new instance
      */
     private static Routing createRouting(Config config) {
-        DbClient dbClient = DbClient.create(config.get("dbclient"));
+        // Initialize dbRepository or dbClient based on config
+        DbClient dbClient = null;
+        DbRepository dbRepository = null;
+        Config dataSourceConfig = config.get("dataSource");
+        if (dataSourceConfig.exists()) {
+            dbRepository = new JdbcRepository(getDataSource(dataSourceConfig));
+            System.out.println("Using JdbcRepository ...");
+        } else {
+            Config dbClientConfig = config.get("dbclient");
+            Objects.requireNonNull(dbClientConfig);
+            dbClient = DbClient.create(dbClientConfig);
+            System.out.println("Using DbClient ...");
+        }
 
         return Routing.builder()
                 .any((req, res) -> {
-                    // required header for each responseß
+                    // required header for each response
                     res.headers().add("Server", "Helidon");
                     req.next();
                 })
                 .get("/json", new JsonHandler())
                 .get("/plaintext", new PlainTextHandler())
-                .register("/db", new DbService(dbClient))
+                .register("/db", new DbService(dbClient, dbRepository))
                 .get("/fortunes", new FortuneHandler(dbClient, getTemplate()))
                 .build();
     }
@@ -79,5 +94,14 @@ public final class Main {
     private static Mustache getTemplate() {
         MustacheFactory mf = new DefaultMustacheFactory();
         return mf.compile("fortunes.mustache");
+    }
+
+    private static DataSource getDataSource(Config config) {
+        HikariConfig hikariConfig = new HikariConfig();
+        hikariConfig.setJdbcUrl(config.get("jdbcUrl").asString().get());
+        hikariConfig.setUsername(config.get("username").asString().get());
+        hikariConfig.setPassword(config.get("password").asString().get());
+        hikariConfig.setMaximumPoolSize(config.get("maximumPoolSize").asInt().get());
+        return new HikariDataSource(hikariConfig);
     }
 }
