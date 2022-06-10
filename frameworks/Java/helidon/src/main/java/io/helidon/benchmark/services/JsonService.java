@@ -3,8 +3,8 @@ package io.helidon.benchmark.services;
 import java.util.Collections;
 import java.util.Map;
 
-import javax.json.Json;
-import javax.json.JsonBuilderFactory;
+import jakarta.json.Json;
+import jakarta.json.JsonBuilderFactory;
 
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.Routing;
