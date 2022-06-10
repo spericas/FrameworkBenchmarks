@@ -1,4 +1,9 @@
 FROM maven:3.8.1-openjdk-17-slim as maven
+RUN apt-get -yqq update
+RUN apt-get -yqq install git-core
+RUN git clone https://github.com/oracle/helidon.git helidon-master
+WORKDIR /helidon-master
+RUN mvn clean install -DskipTests -q
 WORKDIR /helidon
 COPY src src
 COPY pom.xml pom.xml
