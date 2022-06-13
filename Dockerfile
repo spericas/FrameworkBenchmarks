@@ -1,5 +1,10 @@
 FROM buildpack-deps:bionic
 
+ENV http_proxy http://www-proxy-hqdc.us.oracle.com:80
+ENV https_proxy http://www-proxy-hqdc.us.oracle.com:80
+ENV no_proxy 127.0.0.1,localhost,localhost4,localhost6,*.localdomain,*.localdomain4,*.localdomain6,localaddress,tfb-server,tfb-database
+ENV NO_PROXY 127.0.0.1,localhost,localhost4,localhost6,*.localdomain,*.localdomain4,*.localdomain6,localaddress,tfb-server,tfb-database
+
 # One -q produces output suitable for logging (mostly hides
 # progress indicators)
 RUN apt-get -yqq update
@@ -22,5 +27,10 @@ RUN cp -r /usr/local/lib/python2.7/dist-packages/backports/ssl_match_hostname/ /
 
 ENV PYTHONPATH /FrameworkBenchmarks
 ENV FWROOT /FrameworkBenchmarks
+
+ENV http_proxy ""
+ENV https_proxy ""
+ENV HTTP_PROXY ""
+ENV HTTPS_PROXY ""
 
 ENTRYPOINT ["python", "/FrameworkBenchmarks/toolset/run-tests.py"]
