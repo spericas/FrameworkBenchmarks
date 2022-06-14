@@ -26,6 +26,9 @@ class DockerHelper:
             base_url=self.benchmarker.config.server_docker_host)
         self.database = docker.DockerClient(
             base_url=self.benchmarker.config.database_docker_host)
+        log("Logging in self.client")
+        dict = self.client.login(username="spericas", password="<PASS>", email=None, registry="https://index.docker.io/v1/", reauth=True, dockercfg_path="/home/spericas/.docker/config.json")
+        print(dict)
 
     def __build(self, base_url, path, build_log_file, log_prefix, dockerfile,
                 tag, buildargs={}):
@@ -36,6 +39,15 @@ class DockerHelper:
         self.benchmarker.time_logger.mark_build_start()
         with open(build_log_file, 'w') as build_log:
             try:
+                client = docker.APIClient(base_url=base_url)
+                log("Logging in client");
+		dict = client.login(username="spericas", password="<PASS>", email=None, registry="https://index.docker.io/v1/", reauth=True, dockercfg_path="/home/spericas/.docker/config.json")
+                print(dict)
+                print(path + " " +
+                    dockerfile + " " +
+                    tag + " ")
+                print(buildargs)
+
                 client = docker.APIClient(base_url=base_url)
                 output = client.build(
                     path=path,
