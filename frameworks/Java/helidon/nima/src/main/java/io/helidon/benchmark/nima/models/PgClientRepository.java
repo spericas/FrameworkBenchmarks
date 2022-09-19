@@ -26,9 +26,10 @@ public class PgClientRepository implements DbRepository {
     private final SqlClient queryPool;
     private final SqlClient updatePool;
 
-    private final int batchSize;
+    private final int updateBatchSize;
     private final long updateTimeout;
-    private final int maxRetries;
+    private final int updateMaxRetries;
+    private final int queryPipelineSize;
 
     public PgClientRepository(Config config) {
         Vertx vertx = Vertx.vertx(new VertxOptions()
@@ -44,12 +45,14 @@ public class PgClientRepository implements DbRepository {
         int sqlPoolSize = config.get("sql-pool-size").asInt().orElse(64);
         PoolOptions clientOptions = new PoolOptions().setMaxSize(sqlPoolSize);
         LOGGER.info("sql-pool-size is " + sqlPoolSize);
-        batchSize = config.get("update-batch-size").asInt().orElse(20);
-        LOGGER.info("update-batch-size is " + batchSize);
+        updateBatchSize = config.get("update-batch-size").asInt().orElse(20);
+        LOGGER.info("update-batch-size is " + updateBatchSize);
         updateTimeout = config.get("update-timeout-millis").asInt().orElse(5000);
         LOGGER.info("update-timeout-millis is " + updateTimeout);
-        maxRetries = config.get("update-max-retries").asInt().orElse(3);
-        LOGGER.info("update-max-retries is " + maxRetries);
+        updateMaxRetries = config.get("update-max-retries").asInt().orElse(3);
+        LOGGER.info("update-max-retries is " + updateMaxRetries);
+        queryPipelineSize = config.get("query-pipeline-size").asInt().orElse(1);
+        LOGGER.info("query-pipeline-size is " + queryPipelineSize);
 
         queryPool = PgPool.client(vertx, connectOptions, clientOptions);
         updatePool = PgPool.client(vertx, connectOptions, clientOptions);
@@ -58,24 +61,39 @@ public class PgClientRepository implements DbRepository {
     @Override
     public World getWorld(int id) {
         try {
-            return getWorld(id, queryPool);
+            return getWorld(id, queryPool).get();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public List<World> getWorlds(int count) {
         try {
             List<World> result = new ArrayList<>(count);
-            for (int i = 0; i < count; i++) {
-                World world = queryPool.preparedQuery("SELECT id, randomnumber FROM world WHERE id = $1")
-                        .execute(Tuple.of(randomWorldNumber()))
-                        .map(rows -> {
-                            Row r = rows.iterator().next();
-                            return new World(r.getInteger(0), r.getInteger(1));
-                        }).toCompletionStage().toCompletableFuture().get();
-                result.add(world);
+            CompletableFuture<World>[] worldFutures = new CompletableFuture[queryPipelineSize];
+
+            // Execute queries in a pipeline, always one at a time
+            int fullPipelines = count / queryPipelineSize;
+            while (fullPipelines-- > 0) {
+                for (int i = 0; i < queryPipelineSize; i++) {
+                    worldFutures[i] = getWorld(randomWorldNumber(), queryPool);
+                }
+                for (int i = 0; i < queryPipelineSize; i++) {
+                    result.add(worldFutures[i].get());
+                }
+            }
+
+            // Execute the last (partial) pipeline
+            int lastPipeline = count % queryPipelineSize;
+            if (lastPipeline > 0) {
+                for (int i = 0; i < lastPipeline; i++) {
+                    worldFutures[i] = getWorld(randomWorldNumber(), queryPool);
+                }
+                for (int i = 0; i < lastPipeline; i++) {
+                    result.add(worldFutures[i].get());
+                }
             }
             return result;
         } catch (Exception e) {
@@ -99,14 +117,14 @@ public class PgClientRepository implements DbRepository {
         for (World w : worlds) {
             w.randomNumber = randomWorldNumber();
         }
-        if (count <= batchSize) {
+        if (count <= updateBatchSize) {
             LOGGER.finest(() -> "Updating single batch of size " + count);
             updateWorldsRetry(worlds, 0, 0);
         } else {
-            int batches = count / batchSize + (count % batchSize == 0 ? 0 : 1);
+            int batches = count / updateBatchSize + (count % updateBatchSize == 0 ? 0 : 1);
             for (int i = 0; i < batches; i++) {
-                final int from = i * batchSize;
-                LOGGER.finest(() -> "Updating batch from " + from + " to " + (from + batchSize));
+                final int from = i * updateBatchSize;
+                LOGGER.finest(() -> "Updating batch from " + from + " to " + (from + updateBatchSize));
                 updateWorldsRetry(worlds, from, 0);
             }
         }
@@ -114,7 +132,7 @@ public class PgClientRepository implements DbRepository {
     }
 
     private List<World> updateWorldsRetry(List<World> worlds, int from, int retries) {
-        if (retries > maxRetries) {
+        if (retries > updateMaxRetries) {
             throw new RuntimeException("Too many transaction retries");
         }
         CompletableFuture<List<World>> cf = null;
@@ -151,19 +169,19 @@ public class PgClientRepository implements DbRepository {
         }
     }
 
-    private static World getWorld(int id, SqlClient pool) throws ExecutionException, InterruptedException {
+    private static CompletableFuture<World> getWorld(int id, SqlClient pool) throws ExecutionException, InterruptedException {
         return pool.preparedQuery("SELECT id, randomnumber FROM world WHERE id = $1")
                 .execute(Tuple.of(id))
                 .map(rows -> {
                     Row r = rows.iterator().next();
                     return new World(r.getInteger(0), r.getInteger(1));
-                }).toCompletionStage().toCompletableFuture().get();
+                }).toCompletionStage().toCompletableFuture();
 
     }
 
     private CompletableFuture<List<World>> updateWorlds(List<World> worlds, int from, SqlClient pool) {
         List<Tuple> tuples = new ArrayList<>();
-        int to = Math.min(from + batchSize, worlds.size());
+        int to = Math.min(from + updateBatchSize, worlds.size());
         for (int i = from; i < to; i++) {
             World w = worlds.get(i);
             tuples.add(Tuple.of(w.randomNumber, w.id));

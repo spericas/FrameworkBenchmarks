@@ -35,8 +35,8 @@ server:
       recv-log: false
       send-log: false
 
-host: "tfb-database"
-#host: "localhost"
+#host: "tfb-database"
+host: "localhost"
 db: "hello_world"
 username: benchmarkdbuser
 password: benchmarkdbpass
@@ -47,3 +47,4 @@ db-repository: "pgclient"     # "pgclient" (default) or "hikari"
 update-batch-size: 10
 update-timeout-millis: 10000
 update-max-retries: 3
+query-pipeline-size: 1
