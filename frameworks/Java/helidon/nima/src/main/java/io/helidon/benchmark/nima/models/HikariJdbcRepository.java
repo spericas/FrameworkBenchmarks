@@ -17,6 +17,7 @@ import static io.helidon.benchmark.nima.models.DbRepository.randomWorldNumber;
 
 public class HikariJdbcRepository implements DbRepository {
     private static final Logger LOGGER = Logger.getLogger(HikariJdbcRepository.class.getName());
+    public static final String UPDATE_WORLD_QUERY = "UPDATE world SET randomnumber = ? WHERE id = ?";
 
     private HikariDataSource ds;
     private final HikariConfig hikariConfig;
@@ -80,12 +81,14 @@ public class HikariJdbcRepository implements DbRepository {
     public List<World> updateWorlds(int count) {
         try (Connection c = getConnection()) {
             List<World> result = new ArrayList<>(count);
+            PreparedStatement ps = c.prepareStatement(UPDATE_WORLD_QUERY);
             for (int i = 0; i < count; i++) {
                 World world = getWorld(randomWorldNumber(), c);
                 world.randomNumber = randomWorldNumber();
-                updateWorld(world, c);
+                addWorldUpdateToBatch(world, ps);
                 result.add(world);
             }
+            ps.executeBatch();
             return result;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -118,10 +121,16 @@ public class HikariJdbcRepository implements DbRepository {
     }
 
     private World updateWorld(World world, Connection c) throws SQLException {
-        PreparedStatement ps = c.prepareStatement("UPDATE world SET randomnumber = ? WHERE id = ?");
+        PreparedStatement ps = c.prepareStatement(UPDATE_WORLD_QUERY);
         ps.setObject(1, world.randomNumber);
         ps.setObject(2, world.id);
         ps.executeUpdate();
         return world;
+    }
+
+    private void addWorldUpdateToBatch(World world, PreparedStatement ps) throws SQLException {
+        ps.setInt(1, world.randomNumber);
+        ps.setInt(2, world.id);
+        ps.addBatch();
     }
 }
