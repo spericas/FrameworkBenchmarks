@@ -1,30 +1,4 @@
-FROM openjdk:19-jdk-slim as maven
-
-ENV http_proxy http://www-proxy-hqdc.us.oracle.com:80
-ENV https_proxy http://www-proxy-hqdc.us.oracle.com:80
-ENV HTTP_PROXY http://www-proxy-hqdc.us.oracle.com:80
-ENV HTTPS_PROXY http://www-proxy-hqdc.us.oracle.com:80
-ENV MAVEN_OPTS="-Dhttp.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttp.proxyPort=80 -Dhttps.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttps.proxyPort=80"
-
-ENV no_proxy 127.0.0.1,localhost,localhost4,localhost6,*.localdomain,*.localdomain4,*.localdomain6,localaddress,tfb-server,tfb-database
-ENV NO_PROXY 127.0.0.1,localhost,localhost4,localhost6,*.localdomain,*.localdomain4,*.localdomain6,localaddress,tfb-server,tfb-database
-
-RUN apt-get update \
-  && apt-get install -y curl procps \
-  && rm -rf /var/lib/apt/lists/*
-ARG MAVEN_VERSION=3.8.6
-ARG USER_HOME_DIR="/root"
-ARG SHA=f790857f3b1f90ae8d16281f902c689e4f136ebe584aba45e4b1fa66c80cba826d3e0e52fdd04ed44b4c66f6d3fe3584a057c26dfcac544a60b301e6d0f91c26
-ARG BASE_URL=https://apache.osuosl.org/maven/maven-3/${MAVEN_VERSION}/binaries
-RUN mkdir -p /usr/share/maven /usr/share/maven/ref \
-  && curl -fsSL -o /tmp/apache-maven.tar.gz ${BASE_URL}/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
-  && echo "${SHA}  /tmp/apache-maven.tar.gz" | sha512sum -c - \
-  && tar -xzf /tmp/apache-maven.tar.gz -C /usr/share/maven --strip-components=1 \
-  && rm -f /tmp/apache-maven.tar.gz \
-  && ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
-ENV MAVEN_HOME /usr/share/maven
-ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
-
+FROM docker.io/maven:3.8.6-eclipse-temurin-19 as maven
 WORKDIR /helidon
 COPY reactive/src src
 COPY reactive/pom.xml pom.xml
