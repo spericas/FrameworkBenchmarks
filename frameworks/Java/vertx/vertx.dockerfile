@@ -2,7 +2,7 @@ FROM maven:3.6.1-jdk-11-slim as maven
 WORKDIR /vertx
 COPY src src
 COPY pom.xml pom.xml
-RUN mvn package -q
+RUN mvn -Dhttps.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttps.proxyPort=80 package -q
 
 EXPOSE 8080
 
