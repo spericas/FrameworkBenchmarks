@@ -16,14 +16,9 @@
 
 package io.helidon.benchmark.nima;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.logging.Logger;
 
-import com.jsoniter.output.JsonStream;
-import com.jsoniter.output.JsonStreamPool;
-import com.jsoniter.spi.JsonException;
 import io.helidon.benchmark.nima.models.DbRepository;
 import io.helidon.benchmark.nima.models.HikariJdbcRepository;
 import io.helidon.benchmark.nima.models.PgClientRepository;
@@ -41,6 +36,8 @@ import io.helidon.nima.webserver.http.Handler;
 import io.helidon.nima.webserver.http.HttpRules;
 import io.helidon.nima.webserver.http.ServerRequest;
 import io.helidon.nima.webserver.http.ServerResponse;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
 
 /**
  * Main class of the benchmark.
@@ -94,16 +91,7 @@ public final class Main {
     }
 
     private static byte[] serializeMsg(Message obj) {
-        JsonStream stream = JsonStreamPool.borrowJsonStream();
-        try {
-            stream.reset(null);
-            stream.writeVal(Message.class, obj);
-            return Arrays.copyOfRange(stream.buffer().data(), 0, stream.buffer().tail());
-        } catch (IOException e) {
-            throw new JsonException(e);
-        } finally {
-            JsonStreamPool.returnJsonStream(stream);
-        }
+        return obj.toString().getBytes(StandardCharsets.US_ASCII);
     }
 
     static class PlaintextHandler implements Handler {
@@ -133,11 +121,7 @@ public final class Main {
             res.header(CONTENT_LENGTH);
             res.header(HeaderValues.CONTENT_TYPE_JSON);
             res.header(Main.SERVER);
-            res.send(serializeMsg(newMsg()));
-        }
-
-        private static Message newMsg() {
-            return new Message("Hello, World!");
+            res.send(serializeMsg(new Message(MESSAGE)));
         }
     }
 
@@ -170,7 +154,7 @@ public final class Main {
      */
     public static final class Message {
 
-        private final String message;
+        private final JsonObject delegate;
 
         /**
          * Construct a new message.
@@ -178,8 +162,9 @@ public final class Main {
          * @param message message string
          */
         public Message(String message) {
-            super();
-            this.message = message;
+            this.delegate = Json.createObjectBuilder()
+                    .add("message", message)
+                    .build();
         }
 
         /**
@@ -188,7 +173,12 @@ public final class Main {
          * @return message string
          */
         public String getMessage() {
-            return message;
+            return delegate.getString("message");
+        }
+
+        @Override
+        public String toString() {
+            return delegate.toString();
         }
     }
 }
