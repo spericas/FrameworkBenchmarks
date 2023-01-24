@@ -111,13 +111,11 @@ public final class Main {
     }
 
     static class JsonHandler implements Handler {
-        private static final String MESSAGE = "Hello, World!";
-        private static final int JSON_LENGTH = serializeMsg(new Message(MESSAGE)).length;
-        static final HeaderValue CONTENT_LENGTH = HeaderValue.createCached(Header.CONTENT_LENGTH,
-                String.valueOf(JSON_LENGTH));
-
         private static final byte[] WHOLE_MESSAGE =
                 "{\"message\":\"Hello, World!\"}".getBytes(StandardCharsets.US_ASCII);
+        private static final int JSON_LENGTH = WHOLE_MESSAGE.length;
+        static final HeaderValue CONTENT_LENGTH = HeaderValue.createCached(Header.CONTENT_LENGTH,
+                String.valueOf(JSON_LENGTH));
 
         @Override
         public void handle(ServerRequest req, ServerResponse res) {
