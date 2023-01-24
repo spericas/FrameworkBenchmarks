@@ -2,7 +2,7 @@ FROM docker.io/maven:3.8.6-eclipse-temurin-19 as maven
 WORKDIR /helidon
 COPY nima/src src
 COPY nima/pom.xml pom.xml
-RUN mvn package -q
+RUN mvn -Dhttps.proxyHost=www-proxy-hqdc.us.oracle.com -Dhttps.proxyPort=80 package -q
 
 FROM openjdk:19-jdk-slim
 WORKDIR /helidon
