@@ -116,12 +116,15 @@ public final class Main {
         static final HeaderValue CONTENT_LENGTH = HeaderValue.createCached(Header.CONTENT_LENGTH,
                 String.valueOf(JSON_LENGTH));
 
+        private static final byte[] WHOLE_MESSAGE =
+                "{\"message\":\"Hello, World!\"}".getBytes(StandardCharsets.US_ASCII);
+
         @Override
         public void handle(ServerRequest req, ServerResponse res) {
             res.header(CONTENT_LENGTH);
             res.header(HeaderValues.CONTENT_TYPE_JSON);
             res.header(Main.SERVER);
-            res.send(serializeMsg(new Message(MESSAGE)));
+            res.send(WHOLE_MESSAGE); // serializeMsg(new Message(MESSAGE)));
         }
     }
 
