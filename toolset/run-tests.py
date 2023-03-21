@@ -194,6 +194,11 @@ def main(argv=None):
         default=None,
         help='The network mode to run docker in')
 
+    parser.add_argument(
+        '--no-docker-build',
+        action='store_true',
+        help='Turn off Docker builds')
+
     args = parser.parse_args()
 
     config = BenchmarkConfig(args)
@@ -231,7 +236,7 @@ def main(argv=None):
             benchmarker.results.parse(all_tests)
 
         else:
-            any_failed = benchmarker.run()
+            any_failed = benchmarker.run(args)
             if config.mode == "verify":
                 return any_failed
     except Exception:

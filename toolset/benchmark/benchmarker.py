@@ -39,7 +39,7 @@ class Benchmarker:
     # Public methods
     ##########################################################################################
 
-    def run(self):
+    def run(self, args):
         '''
         This process involves setting up the client/server machines
         with any necessary change. Then going through each test,
@@ -54,8 +54,9 @@ class Benchmarker:
         log("Running Tests...", border='=')
 
         # build wrk and all databases needed for current run
-        self.docker_helper.build_wrk()
-        self.docker_helper.build_databases()
+        if args.no_docker_build == False:
+            self.docker_helper.build_wrk()
+            self.docker_helper.build_databases()
 
         with open(os.path.join(self.results.directory, 'benchmark.log'),
                   'w') as benchmark_log:
