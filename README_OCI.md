@@ -15,10 +15,10 @@ home directory), you can run the `load-images` script to make them available to 
 ### Example
 
 1. Run the benchmark on a machine with `docker.com` access to make sure all images
-are created. You do not need to wait for the benchmark to complete, it can be interrupted
-after all images are created.
+are created (make sure to use branch 'helidon-4'). You do not need to wait for the 
+benchmark to complete, it can be interrupted after all images are created.
 
-2. Make sure you have password-less SSH access to your OCI machine and run:
+2. Ensure you have passwordless SSH access to your OCI machine and run:
 ```
 ./migrate-images myuser hostname
 ```

@@ -23,4 +23,7 @@ RUN cp -r /usr/local/lib/python2.7/dist-packages/backports/ssl_match_hostname/ /
 ENV PYTHONPATH /FrameworkBenchmarks
 ENV FWROOT /FrameworkBenchmarks
 
+ENV no_proxy 127.0.0.1,localhost,localhost4,localhost6,*.localdomain,*.localdomain4,*.localdomain6,localaddress,tfb-server,tfb-database
+ENV NO_PROXY 127.0.0.1,localhost,localhost4,localhost6,*.localdomain,*.localdomain4,*.localdomain6,localaddress,tfb-server,tfb-database
+
 ENTRYPOINT ["python", "/FrameworkBenchmarks/toolset/run-tests.py"]
