@@ -1,0 +1,64 @@
+#!/bin/bash
+
+ssh_arg=""
+
+usage() {
+  echo "$0 user host"
+  echo ""
+  echo "Will save and copy all techempower docker images from this machine"
+  echo "to remote machine. Loading of images must be done manually on remote."
+  echo "SSH must be configured for user to log in host without a password."
+  exit 1
+}
+
+verify() {
+  ssh "$ssh_arg" ls > /dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo "SSH is not properly set up for $user on $host"
+  fi
+  docker images > /dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo "Unable to run Docker and collect images to migrate"
+  fi
+}
+
+migrateImage() {
+  tar="/tmp/$(basename "$image").tar"
+  echo -n "  Saving $tar ... "
+  docker save "$image" -o $tar
+  if [ $? -ne 0 ]; then
+    echo "Error saving image $image"
+    exit 1
+  fi
+  echo "DONE"
+
+  echo -n "  Copying $tar ... "
+  scp "$tar" "$ssh_arg:" > /dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo "Error copying image to $host"
+    exit 1
+  fi
+  rm -f "$tar" > /dev/null 2>&1
+  echo "DONE"
+}
+
+if [ $# -ne 2 ]; then
+  usage
+fi
+
+user=$1
+host=$2
+ssh_arg="$user@$host"
+
+verify
+
+images=$( docker images | grep techempower | awk '{print $1}')
+
+for i in $images
+do
+  image=$i
+  echo "Migrating image '$image' ..."
+  migrateImage
+done
+
+echo "Please log into $host and run docker load for each tar file"
