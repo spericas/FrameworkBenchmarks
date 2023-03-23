@@ -14,8 +14,22 @@ home directory), you can run the `load-images` script to make them available to 
 
 ### Example
 
-After copying and loading the images, you can run:
+1. Run the benchmark on a machine with `docker.com` access to make sure all images
+are created. You do not need to wait for the benchmark to complete, it can be interrupted
+after all images are created.
 
+2. Make sure you have password-less SSH access to your OCI machine and run:
+```
+./migrate-images myuser hostname
+```
+
+3. Log into the OCI machine. You should find all images as tar files in your home directory.
+Run the script to load images:
+```
+./sudo load-images $HOME/*.tar
+```
+
+5. Now you are ready to start the benchmark with the special flag `--no-docker-build`:
 ```
 ./tfb --no-docker-build -test helidon
 ./tfb --no-docker-build -test helidon-nima
