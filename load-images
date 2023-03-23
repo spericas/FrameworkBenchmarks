@@ -8,7 +8,7 @@ usage() {
 }
 
 loadImage() {
-  echo -n "  Loading image from $tar ... "
+  echo -n "Loading image from $tar ... "
   docker load -i "$tar" > /dev/null 2>&1
   if [ $? -ne 0 ]; then
     echo "Error loading image from $tar"
@@ -24,6 +24,5 @@ fi
 for i in "$@"
 do
   tar=$i
-  echo "Loading images ..."
   loadImage
 done
