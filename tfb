@@ -92,6 +92,16 @@ _canonicalize_file_path() {
     (cd "$dir" 2>/dev/null >/dev/null && printf '%s/%s\n' "$(pwd -P)" "$file")
 }
 
+_no_docker_build() {
+      for arg in "$@"; do
+          if [ "$arg" = "--no-docker-build" ]; then
+              docker_build=false
+              return;
+          fi
+      done
+      docker_build=true
+}
+
 ##############################################################################
 
 SCRIPT_PATH="$(realpath "$0")"
@@ -102,5 +112,8 @@ if ! docker network inspect tfb >/dev/null 2>&1; then
 fi
 
 test -t 1 && USE_TTY="-t"
-docker build -t techempower/tfb - < ${SCRIPT_ROOT}/Dockerfile
+_no_docker_build  "${@}"
+if [ "$docker_build" = true ]; then
+  docker build -t techempower/tfb - < ${SCRIPT_ROOT}/Dockerfile
+fi
 exec docker run -i ${USE_TTY} --rm --network tfb -v /var/run/docker.sock:/var/run/docker.sock -v ${SCRIPT_ROOT}:/FrameworkBenchmarks techempower/tfb "${@}"

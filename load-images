@@ -1,0 +1,28 @@
+#!/bin/bash
+
+usage() {
+  echo "$0 image1.tar [image2.tar ...]"
+  echo ""
+  echo "Load exported images into docker local repository"
+  exit 1
+}
+
+loadImage() {
+  echo -n "Loading image from $tar ... "
+  docker load -i "$tar" > /dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo "Error loading image from $tar"
+    exit 1
+  fi
+  echo "DONE"
+}
+
+if [ $# -lt 1 ]; then
+  usage
+fi
+
+for i in "$@"
+do
+  tar=$i
+  loadImage
+done
