@@ -26,11 +26,11 @@ after all images are created.
 3. Log into the OCI machine. You should find all images as tar files in your home directory.
 Run the script to load images:
 ```
-./sudo load-images $HOME/*.tar
+sudo ./load-images $HOME/*.tar
 ```
 
 5. Now you are ready to start the benchmark with the special flag `--no-docker-build`:
 ```
-./tfb --no-docker-build -test helidon
-./tfb --no-docker-build -test helidon-nima
+sudo ./tfb --no-docker-build --test helidon
+sudo ./tfb --no-docker-build --test helidon-nima
 ```
