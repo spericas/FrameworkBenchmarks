@@ -39,7 +39,7 @@ class Benchmarker:
     # Public methods
     ##########################################################################################
 
-    def run(self, args):
+    def run(self):
         '''
         This process involves setting up the client/server machines
         with any necessary change. Then going through each test,
@@ -54,7 +54,7 @@ class Benchmarker:
         log("Running Tests...", border='=')
 
         # build wrk and all databases needed for current run
-        if args.no_docker_build == False:
+        if not self.config.no_docker_build:
             self.docker_helper.build_wrk()
             self.docker_helper.build_databases()
 
@@ -154,7 +154,7 @@ class Benchmarker:
                 self.time_logger.mark_started_database()
 
             # Start webapp
-            container = test.start()
+            container = test.start(self.config.no_docker_build)
             self.time_logger.mark_test_starting()
             if container is None:
                 message = "ERROR: Problem starting {name}".format(

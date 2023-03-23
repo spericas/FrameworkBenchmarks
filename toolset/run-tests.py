@@ -236,7 +236,7 @@ def main(argv=None):
             benchmarker.results.parse(all_tests)
 
         else:
-            any_failed = benchmarker.run(args)
+            any_failed = benchmarker.run()
             if config.mode == "verify":
                 return any_failed
     except Exception:

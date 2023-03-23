@@ -51,6 +51,7 @@ class BenchmarkConfig:
         self.database_docker_host = None
         self.client_docker_host = None
         self.network = None
+        self.no_docker_build = args.no_docker_build
 
         if self.network_mode is None:
             self.network = 'tfb'

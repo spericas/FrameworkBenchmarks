@@ -39,7 +39,7 @@ class FrameworkTest:
     # Public Methods
     ##########################################################################################
 
-    def start(self):
+    def start(self, no_docker_build):
         '''
         Start the test implementation
         '''
@@ -56,9 +56,10 @@ class FrameworkTest:
         except OSError:
             pass
 
-        result = self.benchmarker.docker_helper.build(self, build_log_dir)
-        if result != 0:
-            return None
+        if not no_docker_build:
+            result = self.benchmarker.docker_helper.build(self, build_log_dir)
+            if result != 0:
+                return None
 
         return self.benchmarker.docker_helper.run(self, run_log_dir)
 
