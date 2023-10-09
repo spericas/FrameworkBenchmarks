@@ -15,23 +15,23 @@
 #
 
 server:
+  host: 0.0.0.0
   port: 8080
-  sockets:
-    - name: "@default"
-      host: 0.0.0.0
-      port: 8080
-      backlog: 8192
-      receive-buffer-size: 64000
-      # set write-queue-length to 0 to disable async writes
-      write-queue-length: 1024
-      connection-options:
-        read-timeout-seconds: 0
-        connect-timeout-seconds: 0
-        send-buffer-size: 64000
-        receive-buffer-size: 64000
-  connection-providers:
+  backlog: 8192
+  receive-buffer-size: 64000
+  write-queue-length: 32
+  # use the following to disable asynchronous
+  # write-queue-length: 0
+  connection-options:
+    read-timeout: PT0S
+    connect-timeout: PT0S
+    socket-send-buffer-size: 64000
+    socket-receive-buffer-size: 64000
+    tcp-no-delay: true
+  protocols:
     "http_1_1":
-      validate-headers: false
+      validate-request-headers: false
+      validate-response-headers: false
       validate-path: false
       recv-log: false
       send-log: false
