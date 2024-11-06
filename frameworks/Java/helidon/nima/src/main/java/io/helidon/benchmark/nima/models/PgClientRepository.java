@@ -35,13 +35,21 @@ public class PgClientRepository implements DbRepository {
                 .setDatabase(config.get("db").asString().orElse("hello_world"))
                 .setUser(config.get("username").asString().orElse("benchmarkdbuser"))
                 .setPassword(config.get("password").asString().orElse("benchmarkdbpass"))
+                .setTcpNoDelay(true)
+                .setTcpQuickAck(true)
                 .setPipeliningLimit(100000);
 
-        int sqlPoolSize = config.get("sql-pool-size").asInt().orElse(64);
-        PoolOptions poolOptions = new PoolOptions().setMaxSize(sqlPoolSize)
-                .setEventLoopSize(Runtime.getRuntime().availableProcessors())
+        int processors = Runtime.getRuntime().availableProcessors();
+        int sqlPoolSize = config.get("sql-pool-size").asInt()
+                .orElse(5 * processors);
+        int eventLoopSize = config.get("event-loop-size").asInt()
+                .orElse(Runtime.getRuntime().availableProcessors());
+        PoolOptions poolOptions = new PoolOptions()
+                .setMaxSize(sqlPoolSize)
+                .setEventLoopSize(Math.max(2, processors / 2))
                 .setPoolCleanerPeriod(-1);
         LOGGER.info("sql-pool-size is " + sqlPoolSize);
+        LOGGER.info("event-loop-size is " + eventLoopSize);
 
         SqlClient client = PgBuilder
                 .client()
