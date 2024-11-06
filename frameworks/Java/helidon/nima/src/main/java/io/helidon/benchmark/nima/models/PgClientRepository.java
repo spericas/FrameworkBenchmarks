@@ -7,10 +7,8 @@ import java.util.logging.Logger;
 
 import io.helidon.config.Config;
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
+import io.vertx.pgclient.PgBuilder;
 import io.vertx.pgclient.PgConnectOptions;
-import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.Row;
@@ -24,15 +22,12 @@ public class PgClientRepository implements DbRepository {
     private static final Logger LOGGER = Logger.getLogger(PgClientRepository.class.getName());
     private static final int UPDATE_QUERIES = 500;
 
-    private final SqlClient updatePool;
-
     private final PreparedQuery<RowSet<Row>> getFortuneQuery;
     private final PreparedQuery<RowSet<Row>> getWorldQuery;
     private final PreparedQuery<RowSet<Row>>[] updateWorldSingleQuery;
 
     @SuppressWarnings("unchecked")
     public PgClientRepository(Config config) {
-        Vertx vertx = Vertx.vertx(new VertxOptions().setPreferNativeTransport(true));
         PgConnectOptions connectOptions = new PgConnectOptions()
                 .setPort(config.get("port").asInt().orElse(5432))
                 .setCachePreparedStatements(config.get("cache-prepared-statements").asBoolean().orElse(true))
@@ -43,18 +38,20 @@ public class PgClientRepository implements DbRepository {
                 .setPipeliningLimit(100000);
 
         int sqlPoolSize = config.get("sql-pool-size").asInt().orElse(64);
-        PoolOptions clientOptions = new PoolOptions().setMaxSize(sqlPoolSize);
+        PoolOptions poolOptions = new PoolOptions().setMaxSize(sqlPoolSize);
         LOGGER.info("sql-pool-size is " + sqlPoolSize);
 
-        SqlClient queryPool = PgPool.client(vertx, connectOptions, clientOptions);
-        updatePool = PgPool.client(vertx, connectOptions, clientOptions);
+        SqlClient client = PgBuilder
+                .client()
+                .with(poolOptions)
+                .connectingTo(connectOptions)
+                .build();
 
-        getWorldQuery = queryPool.preparedQuery("SELECT id, randomnumber FROM world WHERE id = $1");
-        getFortuneQuery = queryPool.preparedQuery("SELECT id, message FROM fortune");
-
+        getWorldQuery = client.preparedQuery("SELECT id, randomnumber FROM world WHERE id = $1");
+        getFortuneQuery = client.preparedQuery("SELECT id, message FROM fortune");
         updateWorldSingleQuery = new PreparedQuery[UPDATE_QUERIES];
         for (int i = 0; i < UPDATE_QUERIES; i++) {
-            updateWorldSingleQuery[i] = queryPool.preparedQuery(singleUpdate(i + 1));
+            updateWorldSingleQuery[i] = client.preparedQuery(singleUpdate(i + 1));
         }
     }
 
@@ -77,10 +74,10 @@ public class PgClientRepository implements DbRepository {
             List<Future<?>> futures = new ArrayList<>();
             for (int i = 0; i < count; i++) {
                 futures.add(getWorldQuery.execute(Tuple.of(randomWorldNumber()))
-                                    .map(rows -> {
-                                        Row r = rows.iterator().next();
-                                        return new World(r.getInteger(0), r.getInteger(1));
-                                    }));
+                        .map(rows -> {
+                            Row r = rows.iterator().next();
+                            return new World(r.getInteger(0), r.getInteger(1));
+                        }));
             }
             return Future.all(futures).toCompletionStage().toCompletableFuture().get().list();
         } catch (Exception e) {
@@ -92,7 +89,7 @@ public class PgClientRepository implements DbRepository {
     public List<World> updateWorlds(int count) {
         List<World> worlds = getWorlds(count);
         try {
-            return updateWorlds(worlds, count, updatePool);
+            return updateWorlds(worlds, count);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -114,7 +111,7 @@ public class PgClientRepository implements DbRepository {
         }
     }
 
-    private List<World> updateWorlds(List<World> worlds, int count, SqlClient pool)
+    private List<World> updateWorlds(List<World> worlds, int count)
             throws ExecutionException, InterruptedException {
         int size = worlds.size();
         List<Integer> updateParams = new ArrayList<>(size * 2);
