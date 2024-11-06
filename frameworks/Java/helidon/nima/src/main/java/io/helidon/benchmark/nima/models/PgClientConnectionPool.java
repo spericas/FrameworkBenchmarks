@@ -23,7 +23,7 @@ class PgClientConnectionPool implements AutoCloseable {
     }
 
     public PgClientConnection clientConnection() {
-        int bucket = Thread.currentThread().hashCode() % size;
+        int bucket = (int) (Thread.currentThread().threadId() % size);
         return connections[bucket];
     }
 
