@@ -39,7 +39,8 @@ public class PgClientRepository implements DbRepository {
 
         int sqlPoolSize = config.get("sql-pool-size").asInt().orElse(64);
         PoolOptions poolOptions = new PoolOptions().setMaxSize(sqlPoolSize)
-                .setEventLoopSize(Runtime.getRuntime().availableProcessors());
+                .setEventLoopSize(Runtime.getRuntime().availableProcessors())
+                .setPoolCleanerPeriod(-1);
         LOGGER.info("sql-pool-size is " + sqlPoolSize);
 
         SqlClient client = PgBuilder
