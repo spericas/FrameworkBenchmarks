@@ -38,7 +38,8 @@ public class PgClientRepository implements DbRepository {
                 .setPipeliningLimit(100000);
 
         int sqlPoolSize = config.get("sql-pool-size").asInt().orElse(64);
-        PoolOptions poolOptions = new PoolOptions().setMaxSize(sqlPoolSize);
+        PoolOptions poolOptions = new PoolOptions().setMaxSize(sqlPoolSize)
+                .setEventLoopSize(Runtime.getRuntime().availableProcessors());
         LOGGER.info("sql-pool-size is " + sqlPoolSize);
 
         SqlClient client = PgBuilder
