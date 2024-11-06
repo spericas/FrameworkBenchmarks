@@ -37,6 +37,7 @@ public class PgClientRepository implements DbRepository {
                 .setPassword(config.get("password").asString().orElse("benchmarkdbpass"))
                 .setTcpNoDelay(true)
                 .setTcpQuickAck(true)
+                .setTcpKeepAlive(true)
                 .setPipeliningLimit(100000);
 
         int processors = Runtime.getRuntime().availableProcessors();
@@ -51,17 +52,22 @@ public class PgClientRepository implements DbRepository {
         LOGGER.info("sql-pool-size is " + sqlPoolSize);
         LOGGER.info("event-loop-size is " + eventLoopSize);
 
-        SqlClient client = PgBuilder
+        SqlClient queryClient = PgBuilder
                 .client()
                 .with(poolOptions)
                 .connectingTo(connectOptions)
                 .build();
+        getWorldQuery = queryClient.preparedQuery("SELECT id, randomnumber FROM world WHERE id = $1");
+        getFortuneQuery = queryClient.preparedQuery("SELECT id, message FROM fortune");
 
-        getWorldQuery = client.preparedQuery("SELECT id, randomnumber FROM world WHERE id = $1");
-        getFortuneQuery = client.preparedQuery("SELECT id, message FROM fortune");
+        SqlClient updateClient = PgBuilder
+                .client()
+                .with(poolOptions)
+                .connectingTo(connectOptions)
+                .build();
         updateWorldSingleQuery = new PreparedQuery[UPDATE_QUERIES];
         for (int i = 0; i < UPDATE_QUERIES; i++) {
-            updateWorldSingleQuery[i] = client.preparedQuery(singleUpdate(i + 1));
+            updateWorldSingleQuery[i] = updateClient.preparedQuery(singleUpdate(i + 1));
         }
     }
 
