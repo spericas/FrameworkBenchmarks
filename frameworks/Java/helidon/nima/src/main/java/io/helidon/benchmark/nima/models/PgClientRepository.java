@@ -7,6 +7,8 @@ import java.util.logging.Logger;
 
 import io.helidon.config.Config;
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
 import io.vertx.pgclient.PgBuilder;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.sqlclient.PoolOptions;
@@ -28,6 +30,12 @@ public class PgClientRepository implements DbRepository {
 
     @SuppressWarnings("unchecked")
     public PgClientRepository(Config config) {
+        VertxOptions vertxOptions = new VertxOptions()
+                .setPreferNativeTransport(true)
+                .setBlockedThreadCheckInterval(100000)
+                .setUseDaemonThread(true);
+        Vertx vertx = Vertx.vertx(vertxOptions);
+
         PgConnectOptions connectOptions = new PgConnectOptions()
                 .setPort(config.get("port").asInt().orElse(5432))
                 .setCachePreparedStatements(config.get("cache-prepared-statements").asBoolean().orElse(true))
@@ -53,6 +61,7 @@ public class PgClientRepository implements DbRepository {
                 .client()
                 .with(poolOptions)
                 .connectingTo(connectOptions)
+                .using(vertx)
                 .build();
         getWorldQuery = queryClient.preparedQuery("SELECT id, randomnumber FROM world WHERE id = $1");
         getFortuneQuery = queryClient.preparedQuery("SELECT id, message FROM fortune");
