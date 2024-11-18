@@ -40,14 +40,11 @@ public class PgClientRepository implements DbRepository {
                 .setTcpKeepAlive(true)
                 .setPipeliningLimit(100000);
 
-        int processors = Runtime.getRuntime().availableProcessors();
-        int sqlPoolSize = config.get("sql-pool-size").asInt()
-                .orElse(5 * processors);
-        int eventLoopSize = config.get("event-loop-size").asInt()
-                .orElse(Runtime.getRuntime().availableProcessors());
+        int sqlPoolSize = config.get("sql-pool-size").asInt().orElse(defaultPoolSize());
+        int eventLoopSize = config.get("event-loop-size").asInt().orElse(defaultPoolSize());
         PoolOptions poolOptions = new PoolOptions()
                 .setMaxSize(sqlPoolSize)
-                .setEventLoopSize(Math.max(2, processors / 2))
+                .setEventLoopSize(eventLoopSize)
                 .setPoolCleanerPeriod(-1);
         LOGGER.info("sql-pool-size is " + sqlPoolSize);
         LOGGER.info("event-loop-size is " + eventLoopSize);
@@ -158,5 +155,10 @@ public class PgClientRepository implements DbRepository {
         }
         sql.append(")");
         return sql.toString();
+    }
+
+    private static int defaultPoolSize() {
+        int processors = Runtime.getRuntime().availableProcessors();
+        return Math.max(processors, 7 * processors - 26);
     }
 }
