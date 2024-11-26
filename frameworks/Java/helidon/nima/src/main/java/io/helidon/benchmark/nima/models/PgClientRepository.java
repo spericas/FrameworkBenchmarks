@@ -38,11 +38,13 @@ public class PgClientRepository implements DbRepository {
 
         PgConnectOptions connectOptions = new PgConnectOptions()
                 .setPort(config.get("port").asInt().orElse(5432))
-                .setCachePreparedStatements(config.get("cache-prepared-statements").asBoolean().orElse(true))
                 .setHost(config.get("host").asString().orElse("tfb-database"))
                 .setDatabase(config.get("db").asString().orElse("hello_world"))
                 .setUser(config.get("username").asString().orElse("benchmarkdbuser"))
                 .setPassword(config.get("password").asString().orElse("benchmarkdbpass"))
+                .setCachePreparedStatements(true)
+                .setPreparedStatementCacheMaxSize(UPDATE_QUERIES + 2)
+                .setPreparedStatementCacheSqlFilter(s -> true)          // cache all
                 .setTcpNoDelay(true)
                 .setTcpQuickAck(true)
                 .setTcpKeepAlive(true)
