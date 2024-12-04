@@ -1,21 +1,25 @@
 
 package io.helidon.benchmark.nima.services;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
 
+import com.jsoniter.output.JsonStream;
+import io.helidon.benchmark.nima.JsonStreamSupplier;
 import io.helidon.benchmark.nima.models.DbRepository;
 import io.helidon.benchmark.nima.models.World;
+import io.helidon.common.mapper.OptionalValue;
 import io.helidon.common.parameters.Parameters;
 import io.helidon.http.HeaderValues;
 import io.helidon.webserver.http.HttpRules;
 import io.helidon.webserver.http.HttpService;
 import io.helidon.webserver.http.ServerRequest;
 import io.helidon.webserver.http.ServerResponse;
-import io.helidon.common.mapper.OptionalValue;
 
+import static io.helidon.benchmark.nima.JsonSerializer.serialize;
 import static io.helidon.benchmark.nima.Main.SERVER;
 import static io.helidon.benchmark.nima.models.DbRepository.randomWorldNumber;
-import static io.helidon.benchmark.nima.JsonSerializer.serialize;
 
 public class DbService implements HttpService {
 
@@ -42,7 +46,15 @@ public class DbService implements HttpService {
         res.header(SERVER);
         res.header(HeaderValues.CONTENT_TYPE_JSON);
         int count = parseQueryCount(req.query());
-        res.send(serialize(repository.getWorlds(count)));
+
+        try (OutputStream os = res.outputStream()) {
+            JsonStream jsonStream = JsonStreamSupplier.borrowJsonStream(os);
+            serialize(repository.getWorlds(count), jsonStream);
+            jsonStream.flush();
+            JsonStreamSupplier.returnJsonStream(jsonStream);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void updates(ServerRequest req, ServerResponse res) {

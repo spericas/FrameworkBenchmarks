@@ -88,4 +88,21 @@ public class JsonSerializer {
             JsonStreamSupplier.returnJsonStream(stream);
         }
     }
+
+    public static void serialize(List<?> objs, JsonStream stream) {
+        try {
+            stream.writeArrayStart();
+            int i = 0;
+            int n = objs.size();
+            for (Object obj : objs) {
+                stream.writeVal(obj.getClass(), obj);
+                if (i++ < n - 1) {
+                    stream.writeMore();
+                }
+            }
+            stream.writeArrayEnd();
+        } catch (IOException e) {
+            throw new JsonException(e);
+        }
+    }
 }
