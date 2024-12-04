@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.List;
 
 import com.jsoniter.output.JsonStream;
-import com.jsoniter.output.JsonStreamPool;
 import com.jsoniter.spi.JsonException;
 
 public class JsonSerializer {
@@ -21,7 +20,7 @@ public class JsonSerializer {
      * @return the byte array
      */
     public static byte[] serialize(Object obj) {
-        JsonStream stream = JsonStreamPool.borrowJsonStream();
+        JsonStream stream = JsonStreamSupplier.borrowJsonStream();
         try {
             stream.reset(null);
             stream.writeVal(obj.getClass(), obj);
@@ -29,7 +28,7 @@ public class JsonSerializer {
         } catch (IOException e) {
             throw new JsonException(e);
         } finally {
-            JsonStreamPool.returnJsonStream(stream);
+            JsonStreamSupplier.returnJsonStream(stream);
         }
     }
 
@@ -40,7 +39,7 @@ public class JsonSerializer {
      * @return the byte array
      */
     public static byte[] serialize(Map<String, String> map) {
-        JsonStream stream = JsonStreamPool.borrowJsonStream();
+        JsonStream stream = JsonStreamSupplier.borrowJsonStream();
         try {
             stream.reset(null);
             stream.writeObjectStart();
@@ -57,7 +56,7 @@ public class JsonSerializer {
         } catch (IOException e) {
             throw new JsonException(e);
         } finally {
-            JsonStreamPool.returnJsonStream(stream);
+            JsonStreamSupplier.returnJsonStream(stream);
         }
     }
 
@@ -68,7 +67,7 @@ public class JsonSerializer {
      * @return the byte array
      */
     public static byte[] serialize(List<?> objs) {
-        JsonStream stream = JsonStreamPool.borrowJsonStream();
+        JsonStream stream = JsonStreamSupplier.borrowJsonStream();
         try {
             stream.reset(null);
             stream.writeArrayStart();
@@ -86,7 +85,7 @@ public class JsonSerializer {
         } catch (IOException e) {
             throw new JsonException(e);
         } finally {
-            JsonStreamPool.returnJsonStream(stream);
+            JsonStreamSupplier.returnJsonStream(stream);
         }
     }
 }
