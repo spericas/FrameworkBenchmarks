@@ -58,10 +58,14 @@ class PgClientConnectionPool implements AutoCloseable {
 
     private PgClientConnection newConnection() {
         try {
+            long start = System.currentTimeMillis();
             PgConnection conn = PgConnection.connect(vertx, options)
                     .toCompletionStage().toCompletableFuture().get();
+            System.out.println("### connect time " + (System.currentTimeMillis() - start));
+            start = System.currentTimeMillis();
             PgClientConnection clientConn = new PgClientConnection(conn);
             clientConn.prepare();
+            System.out.println("### prepare time " + (System.currentTimeMillis() - start));
             return clientConn;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -113,11 +117,14 @@ class PgClientConnectionPool implements AutoCloseable {
         void prepare() {
             try {
                 worldQuery = conn.prepare(SELECT_WORLD).toCompletionStage().toCompletableFuture();
+                worldQuery.get();
                 fortuneQuery = conn.prepare(SELECT_FORTUNE).toCompletionStage().toCompletableFuture();
+                fortuneQuery.get();
                 updateQuery = (CompletableFuture<PreparedStatement>[]) new CompletableFuture<?>[UPDATE_QUERIES];
                 for (int i = 0; i < UPDATE_QUERIES; i++) {
                     updateQuery[i] = conn.prepare(singleUpdate(i + 1))
                                          .toCompletionStage().toCompletableFuture();
+                    updateQuery[i].get();
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);
