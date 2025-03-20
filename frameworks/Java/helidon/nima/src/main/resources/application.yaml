@@ -29,6 +29,7 @@ server:
       validate-request-headers: false
       validate-response-headers: false
       validate-path: false
+      validate-prologue: false
       recv-log: false
       send-log: false
 
