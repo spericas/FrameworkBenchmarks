@@ -33,8 +33,11 @@ import io.helidon.http.HeaderNames;
 import io.helidon.http.HeaderValues;
 import io.helidon.logging.common.LogConfig;
 import io.helidon.webserver.WebServer;
-import io.helidon.webserver.http.Handler;
-import io.helidon.webserver.http.HttpRules;
+import io.helidon.webserver.http.Filter;
+import io.helidon.webserver.http.FilterChain;
+import io.helidon.webserver.http.HttpRouting;
+import io.helidon.webserver.http.RoutingRequest;
+import io.helidon.webserver.http.RoutingResponse;
 import io.helidon.webserver.http.ServerRequest;
 import io.helidon.webserver.http.ServerResponse;
 
@@ -73,7 +76,7 @@ public final class Main {
 
     // exposed for tests
     @SuppressWarnings("unchecked")
-    static void routing(HttpRules rules) {
+    static void routing(HttpRouting.Builder rules) {
         Config config = Config.create();
 
         DbRepository repository;
@@ -87,44 +90,61 @@ public final class Main {
             throw new ConfigException("Allowed values for 'db-repository' are 'hikari' and 'pgclient'");
         }
 
-        rules.get("/plaintext", new PlaintextHandler())
-                .get("/json", new JsonHandler())
-                .get("/fortunes", new FortuneHandler(repository))
-                .register("/", new DbService(repository));
+        rules.addFilter(new SimpleHandler(repository))
+             .register("/", new DbService(repository));
     }
 
-    static class PlaintextHandler implements Handler {
+    static class SimpleHandler implements Filter {
         static final Header CONTENT_TYPE = HeaderValues.createCached(HeaderNames.CONTENT_TYPE,
                 "text/plain; charset=UTF-8");
         static final Header CONTENT_LENGTH = HeaderValues.createCached(HeaderNames.CONTENT_LENGTH, "13");
         private static final byte[] RESPONSE_BYTES = "Hello, World!".getBytes(StandardCharsets.UTF_8);
 
-        @Override
-        public void handle(ServerRequest req, ServerResponse res) {
+        private static final String MESSAGE = "Hello, World!";
+        private static final int JSON_LENGTH = serialize(new Message(MESSAGE)).length;
+        static final Header JSON_CONTENT_LENGTH = HeaderValues.createCached(HeaderNames.CONTENT_LENGTH,
+                String.valueOf(JSON_LENGTH));
+
+        final DbRepository repository;
+
+        SimpleHandler(DbRepository repository) {
+            this.repository = repository;
+        }
+
+        void handlePlaintext(ServerRequest req, ServerResponse res) {
             res.header(CONTENT_LENGTH);
             res.header(CONTENT_TYPE);
             res.header(Main.SERVER);
             res.send(RESPONSE_BYTES);
         }
-    }
 
-    static class JsonHandler implements Handler {
-        private static final String MESSAGE = "Hello, World!";
-        private static final int JSON_LENGTH = serialize(new Message(MESSAGE)).length;
-        static final Header CONTENT_LENGTH = HeaderValues.createCached(HeaderNames.CONTENT_LENGTH,
-                String.valueOf(JSON_LENGTH));
-
-        @Override
-        public void handle(ServerRequest req, ServerResponse res) {
+        void handleJson(ServerRequest req, ServerResponse res) {
             JsonStream stream = JsonStreamPool.borrowJsonStream();
             try {
-                res.header(CONTENT_LENGTH);
+                res.header(JSON_CONTENT_LENGTH);
                 res.header(HeaderValues.CONTENT_TYPE_JSON);
                 res.header(Main.SERVER);
                 serialize(new Message(MESSAGE), stream);
                 res.send(stream.buffer().data(), 0, stream.buffer().tail());
             } finally {
                 JsonStreamPool.returnJsonStream(stream);
+            }
+        }
+
+        @Override
+        public void filter(FilterChain chain, RoutingRequest req, RoutingResponse res) {
+            switch (req.path().path()) {
+                case "/plaintext":
+                    handlePlaintext(req, res);
+                    break;
+                case "/json":
+                    handleJson(req, res);
+                    break;
+                case "/fortunes":
+                    FortuneHandler handler = new FortuneHandler(repository);
+                    handler.handle(req, res);
+                default:
+                    chain.proceed();
             }
         }
     }
